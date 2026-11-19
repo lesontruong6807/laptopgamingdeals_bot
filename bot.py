@@ -25,25 +25,34 @@ def matches(d):
             and d["currentPrice"] / 100 <= MAX_PRICE)
 
 
-def fmt(d):
+def fmt(d, prev=None):
     cur, orig = d["currentPrice"] / 100, d["originalPrice"] / 100
     pct = round((1 - cur / orig) * 100) if orig > cur else 0
     s = d.get("specs") or {}
     e = html.escape
-    badge = " 🔥 <b>Giá thấp kỷ lục</b>" if d.get("priceTier") == "record_low" else ""
+    tag = "Giảm giá thêm" if prev else "Deal mới"
     lines = [
-        f"💻 <b>{e(d['title'])}</b>{badge}",
-        f"💰 <b>${cur:,.2f}</b>  <s>${orig:,.2f}</s>  (giảm <b>{pct}%</b>, tiết kiệm ${orig-cur:,.0f})",
-        f"🏪 {e(d.get('retailer',''))}",
-        f"• CPU: {e(s.get('cpu','?'))}",
-        f"• GPU: {e(s.get('gpu','?'))}",
-        f"• RAM: {e(s.get('ram','?'))}",
-        f"• Màn hình: {e(s.get('screen','?'))}",
-        f"• Ổ cứng: {e(s.get('storage','?'))}",
+        f"<b>{tag}: {e(d['title'])}</b>",
+        "",
+        f"Giá hiện tại: <b>${cur:,.2f}</b>",
+        f"Giá gốc: ${orig:,.2f}  |  Giảm {pct}%  |  Tiết kiệm ${orig-cur:,.0f}",
+    ]
+    if prev:
+        lines.append(f"Giá trước đó: ${prev/100:,.2f}")
+    if d.get("priceTier") == "record_low":
+        lines.append("Mức giá thấp nhất ghi nhận được")
+    lines += [
+        "",
+        f"CPU: {e(s.get('cpu','N/A'))}",
+        f"GPU: {e(s.get('gpu','N/A'))}",
+        f"RAM: {e(s.get('ram','N/A'))}",
+        f"Màn hình: {e(s.get('screen','N/A'))}",
+        f"Lưu trữ: {e(s.get('storage','N/A'))}",
+        f"Cửa hàng: {e(d.get('retailer','N/A'))}",
     ]
     if d.get("notes"):
-        lines.append(f"• Ghi chú: {e(d['notes'])}")
-    lines.append(f"🔗 {d.get('directUrl') or d.get('retailerUrl')}")
+        lines.append(f"Ghi chú: {e(d['notes'])}")
+    lines += ["", f"Xem deal: {d.get('directUrl') or d.get('retailerUrl')}"]
     return "\n".join(lines)
 
 
@@ -78,7 +87,7 @@ def main():
         new_seen[key] = price
         # báo nếu máy mới lọt vào tầm giá, hoặc giá giảm thêm so với lần báo trước
         if key not in seen or price < seen[key]:
-            send(fmt(d), dry, d.get("imageUrl"))
+            send(fmt(d, seen.get(key)), dry, d.get("imageUrl"))
         else:
             new_seen[key] = min(price, seen[key])
     if not dry:
