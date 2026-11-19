@@ -47,14 +47,23 @@ def fmt(d):
     return "\n".join(lines)
 
 
-def send(text, dry):
+def send(text, dry, image=None):
     if dry:
-        print(text, "\n" + "-" * 40)
+        print(("[ảnh: %s]\n" % image if image else "") + text, "\n" + "-" * 40)
         return
-    tok, chat = os.environ["TELEGRAM_BOT_TOKEN"], os.environ["TELEGRAM_CHAT_ID"]
+    tok, chat = os.environ["TELEGRAM_BOT_TOKEN"].strip(), os.environ["TELEGRAM_CHAT_ID"].strip()
+    base = f"https://api.telegram.org/bot{tok}/"
+    if image and len(text) <= 1024:  # giới hạn caption của Telegram
+        try:
+            data = urllib.parse.urlencode({"chat_id": chat, "photo": image, "caption": text,
+                                           "parse_mode": "HTML"}).encode()
+            urllib.request.urlopen(base + "sendPhoto", data, timeout=30)
+            return
+        except Exception as ex:  # ảnh lỗi -> gửi tin chữ
+            print("sendPhoto lỗi, chuyển sang tin chữ:", ex)
     data = urllib.parse.urlencode({"chat_id": chat, "text": text, "parse_mode": "HTML",
                                    "disable_web_page_preview": "true"}).encode()
-    urllib.request.urlopen(f"https://api.telegram.org/bot{tok}/sendMessage", data, timeout=30)
+    urllib.request.urlopen(base + "sendMessage", data, timeout=30)
 
 
 def main():
@@ -69,7 +78,7 @@ def main():
         new_seen[key] = price
         # báo nếu máy mới lọt vào tầm giá, hoặc giá giảm thêm so với lần báo trước
         if key not in seen or price < seen[key]:
-            send(fmt(d), dry)
+            send(fmt(d), dry, d.get("imageUrl"))
         else:
             new_seen[key] = min(price, seen[key])
     if not dry:
