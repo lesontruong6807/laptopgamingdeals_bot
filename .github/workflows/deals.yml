@@ -1,0 +1,19 @@
+name: laptop-deals
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # mỗi 3 giờ (UTC)
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 bot.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - run: |
+          git config user.name bot && git config user.email bot@users.noreply.github.com
+          git add state.json && (git commit -m "update state" && git push) || true
